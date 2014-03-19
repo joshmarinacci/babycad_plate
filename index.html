@@ -68,13 +68,14 @@ function ModelObject() {
 
 var model = {};
 model.plate = new ModelObject();
-model.plate.w = 250;
-model.plate.h = 160;
+model.plate.type = 'plate';
+model.plate.w = 100;
+model.plate.h = 60;
 var hole1 = new ModelObject();
 hole1.type = "square";
-hole1.w = 30;
-hole1.h = 30;
-hole1.x = 20;
+hole1.w = 10;
+hole1.h = 10;
+hole1.x = 30;
 hole1.y = 20;
 hole1.editableProps = ['w','h','x','y'];
 model.holes = [hole1];
@@ -200,19 +201,58 @@ function updateTo(tf, prop, model) {
     });
 }
 
-
+function modelToJSCAD(model) {
+    console.log('model',model);
+    
+    if(model.length) {
+        var str = "";
+        model.forEach(function(hole) {
+            str += '    plate = plate.subtract('+modelToJSCAD(hole)+');\n';
+        });
+        return str;
+    }
+    
+    if(model.holes) {
+        return ""
+            +"function main() {\n"
+            +'    var plate = '+modelToJSCAD(model.plate)+';\n'
+            +modelToJSCAD(model.holes)
+            +"    return plate;\n"
+            +"}\n"
+        ;
+    }
+    
+    if(model.type == 'plate') {
+        return 'CSG.cube({ center:['+model.w/2+','+(-model.h/2)+',0],radius:['+model.w/2+','+model.h/2+',1]})'
+    }
+    
+    if(model.type == 'square') {
+        return 'CSG.cube({ center:['+(model.x+model.w/2)+','+(-(model.y+model.h/2))+',0], radius:['+model.w/2+','+model.h/2+',1]})';
+    }
+    if(model.type == 'round') {
+        return 'CSG.cylinder({'
+            +' start:['+(model.x)+','+(-model.y)+',-1],'
+            +' end:['+(model.x)+','+(-model.y)+',1],'
+            +' radius:'+model.radius+'})';
+    }
+    
+    
+    return "foo";
+}
 function generateStlFromJSCad(jscadscript, linkid) {
+    
+    var script = modelToJSCAD(model,'');
+    console.log("generated",script);
     var gProcessor = new OpenJsCad.Processor();
     gProcessor.setDebugging(false);
-    gProcessor.setJsCad(jscadscript, "");
-    var obj = OpenJsCad.parseJsCadScriptSync(jscadscript, {}, false);
+    gProcessor.setJsCad(script, "");
+    var obj = OpenJsCad.parseJsCadScriptSync(script, {}, false);
     var blob = obj.fixTJunctions().toStlBinary();
     var windowURL=OpenJsCad.getWindowURL();
     var url = windowURL.createObjectURL(blob)
     $("#"+linkid).attr("href",url);
     $("#"+linkid).attr("download","openjscad.stl");
     $("#"+linkid)[0].click();
-
     console.log("generated stl");    
 }
 
