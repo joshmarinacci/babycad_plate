@@ -5,7 +5,7 @@ function PropSheet() {
         .setTx(400).setTy(0);
         ;
         
-    
+    this.propMap = {};
     this.setSelected = function(core,view,node) {
         this.selectedNode = node;
         if(this.selectedView) {
@@ -21,12 +21,22 @@ function PropSheet() {
             self.view.add(new widgets.Label().setText(prop).setW(40));
             var tf = new widgets.TextField().setText(node[prop]+"").setW(40);
             self.view.add(tf);
+            self.propMap[prop] = tf;
             core.on('action',tf,function(e){
                 propSheet.selectedNode[prop] = parseInt(e.target.getText());
                 propSheet.selectedNode.update();
             });
         });
     };
+    
+    this.updateFromModel = function(model) {
+        var self = this;
+        model.editableProps.forEach(function(prop) {
+            if(self.propMap[prop]) {
+                self.propMap[prop].setText(model[prop]+"");
+            }
+        });
+    }
     
     
     this.deleteSelected = function() {

@@ -117,6 +117,7 @@ function populateHole(hole) {
         e.target.model.x += e.dx;
         e.target.model.y += e.dy;
         e.target.model.update();
+        propSheet.updateFromModel(e.target.model);
     }
     
     var holeView;
