@@ -1,15 +1,23 @@
 <html>
 <head>
 <title>BabyCAD - Plate Builder</title>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
     <script type='text/javascript' src='amino/aminoinput.js'></script>
     <script type='text/javascript' src='amino/amino.js'></script>
     <script type='text/javascript' src='amino/widgets.js'></script>
     <script type='text/javascript' src='amino/canvasamino.js'></script>
     <script type='text/javascript' src='propsheet.js'></script>
+    
+    <script src="csg.js"></script>
+    <script src="openjscad.js"></script>
+  
 </head>
 <style type='text/css'>
 body { margin: 0; padding: 0 }
 canvas { border: 1px solid black; width: 100%; height: 100%; }
+#downloadLink {
+    display: none;
+}
 </style>
 <body>
 <!--<h3>BabyCAD - Plate Builder</h3>
@@ -40,6 +48,10 @@ canvas { border: 1px solid black; width: 100%; height: 100%; }
 -->
 
 <canvas id='canvas' width='800' height='500'></canvas>
+
+<a id='downloadLink' href='#'>download stl</a>
+
+
 <script type='text/javascript'>
 
 
@@ -188,6 +200,22 @@ function updateTo(tf, prop, model) {
     });
 }
 
+
+function generateStlFromJSCad(jscadscript, linkid) {
+    var gProcessor = new OpenJsCad.Processor();
+    gProcessor.setDebugging(false);
+    gProcessor.setJsCad(jscadscript, "");
+    var obj = OpenJsCad.parseJsCadScriptSync(jscadscript, {}, false);
+    var blob = obj.fixTJunctions().toStlBinary();
+    var windowURL=OpenJsCad.getWindowURL();
+    var url = windowURL.createObjectURL(blob)
+    $("#"+linkid).attr("href",url);
+    $("#"+linkid).attr("download","openjscad.stl");
+    $("#"+linkid)[0].click();
+
+    console.log("generated stl");    
+}
+
 amino.setCanvas('canvas');
 amino.startApp(function(corex, stage) {
     core = corex;
@@ -213,6 +241,9 @@ amino.startApp(function(corex, stage) {
         modelView.setScalex(1);
         modelView.setScaley(1);
     }));
+    panel.add(new widgets.PushButton().setText("download stl").setW(100).setH(40).onAction(function() {
+        generateStlFromJSCad($('#model').text(), "downloadLink");
+    }));
     
     propSheet = new PropSheet();
     root.add(propSheet.view);
@@ -235,5 +266,14 @@ amino.startApp(function(corex, stage) {
 });
 
 </script>
+
+<script id='model' type='text/jscad'>
+function main() {
+  var cube = CSG.roundedCube({radius: 8, roundradius: 2, resolution: 10});
+  var sphere = CSG.sphere({radius: 8, resolution: 10}).translate([5, 5, 5]);
+  return cube.union(sphere);
+}
+</script>
+
 </body>
 </html>                                     
