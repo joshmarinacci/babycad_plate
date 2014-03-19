@@ -258,8 +258,8 @@ function generateStlFromJSCad(jscadscript, linkid) {
 }
 
 function generatePlatePanel(stage) {
-    var platePanel = new amino.ProtoGroup()
-        .setTx(10).setTy(stage.getH()-150);
+    var platePanel = new widgets.AnchorPanel()
+        .setFill("#ffffff").setH(80).setTx(10);
     platePanel.add(new widgets.Label().setText("plate width").setTx(0).setTy(0));
     var tf2 =new widgets.TextField().setText(model.plate.w+"").setTx(120).setTy(0).setW(60); 
     platePanel.add(tf2);
@@ -271,21 +271,32 @@ function generatePlatePanel(stage) {
     platePanel.add(tf);
     platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(40));
     updateTo(tf,'h',model.plate);
+    
+    platePanel.setAnchorBottom(true).setBottom(50);
     return platePanel;
 }
 
 amino.setCanvas('canvas');
 amino.startApp(function(corex, stage) {
     core = corex;
-    var root = new amino.ProtoGroup();
+    var root = new widgets.AnchorPanel().setFill("#ffffff");
     stage.setRoot(root);
+    
+    core.on('windowsize',stage,function(e) {
+        root.setW(e.width).setH(e.height);
+    });
     
     modelView = new amino.ProtoGroup().setScalex(1).setScaley(1);
     root.add(modelView);
     populateScene(model);
     
     var panel = new widgets.HorizontalPanel()
-        .setW(stage.getW()).setH(50).setTy(stage.getH()-50);
+        .setW(stage.getW()).setH(50).setTy(stage.getH()-50)
+        .setAnchorBottom(true)
+        .setAnchorLeft(true)
+        .setAnchorRight(true)
+        ;
+        
     root.add(panel);
     panel.add(new widgets.PushButton().setText("square hole").setTx(600).setTy(20).setW(100).setH(40).onAction(createSquareHole));
     panel.add(new widgets.PushButton().setText("round hole").setTx(600).setTy(20+45).setW(100).setH(40).onAction(createRoundHole));
@@ -304,6 +315,7 @@ amino.startApp(function(corex, stage) {
     }));
     
     propSheet = new PropSheet();
+    propSheet.view.setAnchorRight(true);
     root.add(propSheet.view);
     propSheet.view.setTx(stage.getW()-propSheet.view.getW());
     

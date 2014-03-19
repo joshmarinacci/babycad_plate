@@ -381,6 +381,11 @@ amino.setupEventHandlers = function() {
     attachEvent(window,'resize',function(e) {
         dom.width = dom.clientWidth;
         dom.height = dom.clientHeight;
+        input.processEvent(Core._core,{
+            type:"windowsize",
+            width:dom.width,
+            height:dom.height,
+        });
     });
     attachEvent(dom,'mousedown',function(e){
         mouseState.pressed = true;
