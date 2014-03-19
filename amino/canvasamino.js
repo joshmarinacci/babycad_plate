@@ -471,13 +471,22 @@ amino.setupEventHandlers = function() {
         });
     });
     
+    var keyRemap = {
+        190:46, // period
+        188:44, // comma
+    };
+    
     attachEvent(window,'keydown',function(e){
         if(e.metaKey) return;
         e.preventDefault();
         console.log(e);
+        var key = e.keyCode;
+        if(keyRemap[key]) {
+            key = keyRemap[key];
+        }
         input.processEvent(Core._core,{
                 type:"keypress",
-                keycode: e.keyCode,
+                keycode: key,
                 shift:   e.shiftKey?1:0,
                 control: e.ctrlKey?1:0,
                 system:  e.metaKey?1:0,
