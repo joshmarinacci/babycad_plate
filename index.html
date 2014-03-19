@@ -242,7 +242,7 @@ function modelToJSCAD(model) {
 function generateStlFromJSCad(jscadscript, linkid) {
     
     var script = modelToJSCAD(model,'');
-    console.log("generated",script);
+    console.log("generated script",script);
     var gProcessor = new OpenJsCad.Processor();
     gProcessor.setDebugging(false);
     gProcessor.setJsCad(script, "");
@@ -254,6 +254,23 @@ function generateStlFromJSCad(jscadscript, linkid) {
     $("#"+linkid).attr("download","openjscad.stl");
     $("#"+linkid)[0].click();
     console.log("generated stl");    
+}
+
+function generatePlatePanel(stage) {
+    var platePanel = new amino.ProtoGroup()
+        .setTx(10).setTy(stage.getH()-150);
+    platePanel.add(new widgets.Label().setText("plate width").setTx(0).setTy(0));
+    var tf2 =new widgets.TextField().setText(model.plate.w+"").setTx(120).setTy(0).setW(60); 
+    platePanel.add(tf2);
+    platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(0));
+    updateTo(tf2,'w',model.plate);
+    
+    platePanel.add(new widgets.Label().setText("plate height").setTx(0).setTy(40));
+    var tf = new widgets.TextField().setText(model.plate.h+"").setTx(120).setTy(40).setW(60);
+    platePanel.add(tf);
+    platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(40));
+    updateTo(tf,'h',model.plate);
+    return platePanel;
 }
 
 amino.setCanvas('canvas');
@@ -289,20 +306,7 @@ amino.startApp(function(corex, stage) {
     root.add(propSheet.view);
     propSheet.view.setTx(stage.getW()-propSheet.view.getW());
     
-    
-    var platePanel = new amino.ProtoGroup()
-        .setTx(10).setTy(stage.getH()-150);
-    platePanel.add(new widgets.Label().setText("plate width").setTx(0).setTy(0));
-    var tf2 =new widgets.TextField().setText(model.plate.w+"").setTx(120).setTy(0).setW(100); 
-    platePanel.add(tf2);
-    updateTo(tf2,'w',model.plate);
-    
-    platePanel.add(new widgets.Label().setText("plate height").setTx(0).setTy(40));
-    var tf = new widgets.TextField().setText(model.plate.h+"").setTx(120).setTy(40).setW(100);
-    platePanel.add(tf);
-    updateTo(tf,'h',model.plate);
-    
-    root.add(platePanel);
+    root.add(generatePlatePanel(stage));
 });
 
 </script>
