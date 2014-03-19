@@ -185,6 +185,10 @@ function populateScene(model) {
     updateFrom(plate,'h',model.plate);
     modelView.add(plate);
     model.holes.forEach(populateHole);
+    core.on("press",plate,function(e){
+        propSheet.clearSelection();
+    });
+    
 }
 
 function updateFrom(view, prop, model) {

@@ -29,6 +29,15 @@ function PropSheet() {
         });
     };
     
+    this.clearSelection = function() {
+        if(this.selectedView) {
+            this.selectedView.setFill(UNSELECTED_HOLE_FILL);
+        }
+        this.selectedNode = null;
+        this.selectedView = null;
+        this.view.clear();
+    }
+    
     this.updateFromModel = function(model) {
         var self = this;
         model.editableProps.forEach(function(prop) {
