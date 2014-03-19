@@ -1,0 +1,239 @@
+<html>
+<head>
+<title>BabyCAD - Plate Builder</title>
+    <script type='text/javascript' src='amino/aminoinput.js'></script>
+    <script type='text/javascript' src='amino/amino.js'></script>
+    <script type='text/javascript' src='amino/widgets.js'></script>
+    <script type='text/javascript' src='amino/canvasamino.js'></script>
+    <script type='text/javascript' src='propsheet.js'></script>
+</head>
+<style type='text/css'>
+body { margin: 0; padding: 0 }
+canvas { border: 1px solid black; width: 100%; height: 100%; }
+</style>
+<body>
+<!--<h3>BabyCAD - Plate Builder</h3>
+-->
+<!--
+
+
+// button to create rect holes
+// sliders and labels to set the size in mm
+// drag holes around
+// prop sheet on the right when you select a hole to change it's w/h or radius, x/y.
+// have sliders and are live two directions.
+// clean up the prop sheet. new class. nice layout.
+// add scaling and panning
+// add round holes
+
+// make the canvas fill the page, resize and scale it properly.
+// make round holes look roun
+
+
+* button to open 3D preview panel
+* make button to export scad file
+* make button to export stl file
+* make it persist to the server. sharable urls
+* select multiple holes
+
+
+-->
+
+<canvas id='canvas' width='800' height='500'></canvas>
+<script type='text/javascript'>
+
+
+
+var modelView;
+
+function ModelObject() {
+    this.listeners = [];
+    this.update = function() {
+        var self = this;
+        this.listeners.forEach(function(l) { l(self); });
+    }
+};
+
+var model = {};
+model.plate = new ModelObject();
+model.plate.w = 250;
+model.plate.h = 160;
+var hole1 = new ModelObject();
+hole1.type = "square";
+hole1.w = 30;
+hole1.h = 30;
+hole1.x = 20;
+hole1.y = 20;
+hole1.editableProps = ['w','h','x','y'];
+model.holes = [hole1];
+
+function createSquareHole() {
+    var newHole = new ModelObject();
+    newHole.type = "square";
+    newHole.w = 30;
+    newHole.h = 30;
+    newHole.x = 30;
+    newHole.y = 30;
+    model.holes.push(newHole);
+    newHole.editableProps = ['w','h','x','y'];
+    populateHole(newHole);
+}
+function createRoundHole() {
+    var newHole = new ModelObject();
+    newHole.type = "round";
+    newHole.radius = 10;
+    newHole.x = 30;
+    newHole.y = 30;
+    newHole.editableProps = ['x','y','radius'];
+    model.holes.push(newHole);
+    populateHole(newHole);
+}
+
+var UNSELECTED_HOLE_FILL = "#00ffff";
+var SELECTED_HOLE_FILL = "#ff5555";
+var core;
+
+var propSheet;
+
+function populateHole(hole) {
+    function viewPressed(e) {
+        propSheet.setSelected(core,e.target,e.target.model);
+    }
+    
+    function viewDragged(e) {
+        e.target.model.x += e.dx;
+        e.target.model.y += e.dy;
+        e.target.model.update();
+    }
+    
+    var holeView;
+    
+    if(hole.type == 'square') {
+        holeView = new amino.ProtoRect()
+        .setW(hole.w).setH(hole.h).setTx(hole.x).setTy(hole.y)
+        .setFill(UNSELECTED_HOLE_FILL);
+        hole.listeners.push(function(v) {
+            holeView.setTx(v.x);
+            holeView.setTy(v.y);
+            holeView.setW(v.w);
+            holeView.setH(v.h);
+        });
+    }
+    
+    function genCircleGeometry(radius) {
+        var points = [];
+        for(var i=0; i<10; i++) {
+            var th = Math.PI*2/10*i;
+            points.push(Math.sin(th)*radius)+radius;//x
+            points.push(Math.cos(th)*radius)+radius;//y
+            points.push(0);
+        }
+        return points;
+    }
+    if(hole.type == 'round') {
+        holeView = new amino.ProtoPoly()
+            .setTx(hole.x).setTy(hole.y)
+            .setFilled(1)
+            .setFill(UNSELECTED_HOLE_FILL);
+        holeView.setRadius = function(radius) {
+            this.radius = radius;
+            this.setGeometry(genCircleGeometry(this.radius))
+            return this;
+        }
+        holeView.setRadius(hole.radius);
+        holeView.contains = function(x,y) {
+            if(Math.sqrt(x*x+y*y) < this.radius) {
+                return true;
+            }
+            return false;
+        }
+            
+        hole.listeners.push(function(v) {
+            holeView.setTx(v.x);
+            holeView.setTy(v.y);
+            holeView.setRadius(v.radius);
+        });
+    }
+    holeView.model = hole;
+    core.on("press",holeView,viewPressed);
+    core.on('drag',holeView, viewDragged);
+    modelView.add(holeView);
+}
+
+function populateScene(model) {
+
+    var plate = new amino.ProtoRect()
+        .setW(model.plate.w).setH(model.plate.h)
+        .setTx(0).setTy(0)
+        .setFill("#555555")
+        ;
+    updateFrom(plate,'w',model.plate);
+    updateFrom(plate,'h',model.plate);
+    modelView.add(plate);
+    model.holes.forEach(populateHole);
+}
+
+function updateFrom(view, prop, model) {
+    model.listeners.push(function(v) {
+        var setter = 'set' + prop.substring(0,1).toUpperCase() + prop.substring(1);
+        console.log('setter = ' + setter);
+        view[setter](v[prop]);
+    });
+}
+
+function updateTo(tf, prop, model) {
+    core.on('action',tf,function(e) {
+        model[prop] = parseInt(e.target.getText());
+        model.update();
+    });
+}
+
+amino.setCanvas('canvas');
+amino.startApp(function(corex, stage) {
+    core = corex;
+    var root = new amino.ProtoGroup();
+    stage.setRoot(root);
+    
+    modelView = new amino.ProtoGroup().setScalex(1).setScaley(1);
+    root.add(modelView);
+    populateScene(model);
+    
+    var panel = new widgets.HorizontalPanel()
+        .setW(stage.getW()).setH(50).setTy(stage.getH()-50);
+    root.add(panel);
+    panel.add(new widgets.PushButton().setText("square hole").setTx(600).setTy(20).setW(100).setH(40).onAction(createSquareHole));
+    panel.add(new widgets.PushButton().setText("round hole").setTx(600).setTy(20+45).setW(100).setH(40).onAction(createRoundHole));
+    panel.add(new widgets.PushButton().setText("delete hole").setTx(600).setTy(20+45+55).setW(100).setH(40)
+        .onAction(function() { propSheet.deleteSelected(); }));
+    panel.add(new widgets.PushButton().setText("zoom in").setW(100).setH(40).onAction(function() {
+        modelView.setScalex(2);
+        modelView.setScaley(2);
+    }));
+    panel.add(new widgets.PushButton().setText("zoom out").setW(100).setH(40).onAction(function() {
+        modelView.setScalex(1);
+        modelView.setScaley(1);
+    }));
+    
+    propSheet = new PropSheet();
+    root.add(propSheet.view);
+    propSheet.view.setTx(stage.getW()-propSheet.view.getW());
+    
+    
+    var platePanel = new amino.ProtoGroup()
+        .setTx(10).setTy(stage.getH()-150);
+    platePanel.add(new widgets.Label().setText("plate width").setTx(0).setTy(0));
+    var tf2 =new widgets.TextField().setText(model.plate.w+"").setTx(120).setTy(0).setW(100); 
+    platePanel.add(tf2);
+    updateTo(tf2,'w',model.plate);
+    
+    platePanel.add(new widgets.Label().setText("plate height").setTx(0).setTy(40));
+    var tf = new widgets.TextField().setText(model.plate.h+"").setTx(120).setTy(40).setW(100);
+    platePanel.add(tf);
+    updateTo(tf,'h',model.plate);
+    
+    root.add(platePanel);
+});
+
+</script>
+</body>
+</html>                                     
