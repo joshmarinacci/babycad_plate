@@ -66,19 +66,7 @@ function ModelObject() {
     }
 };
 
-var model = {};
-model.plate = new ModelObject();
-model.plate.type = 'plate';
-model.plate.w = 100;
-model.plate.h = 60;
-var hole1 = new ModelObject();
-hole1.type = "square";
-hole1.w = 10;
-hole1.h = 10;
-hole1.x = 30;
-hole1.y = 20;
-hole1.editableProps = ['w','h','x','y'];
-model.holes = [hole1];
+var model;
 
 function createSquareHole() {
     var newHole = new ModelObject();
@@ -263,20 +251,21 @@ function generateStlFromJSCad(jscadscript, linkid) {
     console.log("generated stl");    
 }
 
+var plateWidthTextField;
+var plateHeightTextField;
+
 function generatePlatePanel(stage) {
     var platePanel = new widgets.AnchorPanel()
         .setFill("#ffffff").setH(80).setTx(10);
     platePanel.add(new widgets.Label().setText("plate width").setTx(0).setTy(0));
-    var tf2 =new widgets.TextField().setText(model.plate.w+"").setTx(120).setTy(0).setW(60); 
-    platePanel.add(tf2);
+    plateWidthTextField =new widgets.TextField().setText("").setTx(120).setTy(0).setW(60); 
+    platePanel.add(plateWidthTextField);
     platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(0));
-    updateTo(tf2,'w',model.plate);
     
     platePanel.add(new widgets.Label().setText("plate height").setTx(0).setTy(40));
-    var tf = new widgets.TextField().setText(model.plate.h+"").setTx(120).setTy(40).setW(60);
-    platePanel.add(tf);
+    plateHeightTextField = new widgets.TextField().setText("").setTx(120).setTy(40).setW(60);
+    platePanel.add(plateHeightTextField);
     platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(40));
-    updateTo(tf,'h',model.plate);
     
     platePanel.setAnchorBottom(true).setBottom(50);
     return platePanel;
@@ -294,7 +283,7 @@ amino.startApp(function(corex, stage) {
     
     modelView = new amino.ProtoGroup().setScalex(1).setScaley(1);
     root.add(modelView);
-    populateScene(model);
+    //populateScene(model);
     
     var panel = new widgets.HorizontalPanel()
         .setW(stage.getW()).setH(50).setTy(stage.getH()-50)
@@ -319,7 +308,9 @@ amino.startApp(function(corex, stage) {
     panel.add(new widgets.PushButton().setText("download stl").setW(100).setH(40).onAction(function() {
         generateStlFromJSCad($('#model').text(), "downloadLink");
     }));
-    panel.add(new widgets.PushButton().setText("save").setW(100).setH(40).onAction(saveModel));
+    panel.add(new widgets.PushButton().setText("save").setW(100).setH(40).onAction(function() {
+        docloader.save(model);
+    }));
     
     propSheet = new PropSheet();
     propSheet.view.setAnchorRight(true);
@@ -375,41 +366,10 @@ function staticToModel(st) {
     return model;
 }
 
-function saveModel() {
-    console.log('saving');
-    console.log("supports history api = " + supports_history_api());
-    console.log("location = " + location.search);
-    var params = parseQuery(location.search);
-    console.log(params);
-    
-    //call the fork function
-    var post = {
-        id:params.id,
-        content:modelToStatic(model),
-    };
-    console.log("posting",post);
-    $.post("http://joshy.org:4201/fork?token=asdf",
-        JSON.stringify(post),
-        function(doc) {
-            console.log("got back the doc",doc);
-            history.pushState(null,null,'?id='+doc.id);
-            console.log('setting');
-        }
-    );
-}
 
-    function loadDocument(id) {
-        $.get("http://joshy.org:4201/get",{id:id},function(doc) {
-            console.log("loaded document: ",doc);
-            var newmodel = staticToModel(doc.content);
-            console.log("new model = ",newmodel);
-            model = newmodel;
-            populateScene(newmodel);
-            //$("#prose").val(doc.content);
-            //evalProse();
-        });
-    }
 
+
+function DocLoader() {
     function supports_history_api() {
       return !!(window.history && history.pushState);
     }
@@ -425,23 +385,91 @@ function saveModel() {
         return params;
     }
     
-var startParams = parseQuery(location.search);
-console.log("startParams",startParams);
-
-if(startParams && startParams.id) {
-    loadDocument(startParams.id);
+    
+    var self = this;
+    function loadDocument(id) {
+        $.get("http://joshy.org:4201/get",{id:id},function(doc) {
+            console.log("loaded document: ",doc);
+            var newmodel = self.deserializeDoc(doc.content);
+            self.loaded(newmodel);
+        });
+    }
+    
+    
+    this.start = function() {
+        var startParams = parseQuery(location.search);
+        console.log("startParams",startParams);
+        
+        if(startParams && startParams.id) {
+            loadDocument(startParams.id);
+        } else {
+            this.loaded(this.defaultDoc);
+        }
+    }
+    
+    this.save = function(themodel) {
+        console.log('saving');
+        console.log("supports history api = " + supports_history_api());
+        console.log("location = " + location.search);
+        var params = parseQuery(location.search);
+        console.log(params);
+        
+        //call the fork function
+        var post = {
+            id:params.id,
+            content:this.serializeDoc(themodel),
+        };
+        console.log("posting",post);
+        $.post("http://joshy.org:4201/fork?token=asdf",
+            JSON.stringify(post),
+            function(doc) {
+                console.log("got back the doc",doc);
+                history.pushState(null,null,'?id='+doc.id);
+                console.log('setting');
+            }
+        );
+    }
+    
 }
+
+
+var newmodel = {};
+newmodel.plate = new ModelObject();
+newmodel.plate.type = 'plate';
+newmodel.plate.w = 100;
+newmodel.plate.h = 60;
+var hole1 = new ModelObject();
+hole1.type = "square";
+hole1.w = 10;
+hole1.h = 10;
+hole1.x = 30;
+hole1.y = 20;
+hole1.editableProps = ['w','h','x','y'];
+newmodel.holes = [hole1];
+
+var docloader = new DocLoader();
+docloader.defaultDoc = newmodel;
+docloader.serializeDoc = function(doc) {
+    return modelToStatic(doc);
+};
+docloader.deserializeDoc =function(data) {
+    console.log("asked to deserialize ",data);
+    var newmodel = staticToModel(data);
+    console.log("finished with",newmodel);
+    return newmodel;
+};
+docloader.loaded = function(doc) {
+    console.log("doc loaded",doc);
+    model = doc;
+    populateScene(model);
+    plateWidthTextField.setText(model.plate.w+"");
+    updateTo(plateWidthTextField,'w',model.plate);
+    plateHeightTextField.setText(model.plate.h+"");
+    updateTo(plateHeightTextField,'h',model.plate);
+}
+docloader.start();
 
 </script>
 
-<!--
-<script id='model' type='text/jscad'>
-function main() {
-  var cube = CSG.roundedCube({radius: 8, roundradius: 2, resolution: 10});
-  var sphere = CSG.sphere({radius: 8, resolution: 10}).translate([5, 5, 5]);
-  return cube.union(sphere);
-}
-</script>
--->
 </body>
 </html>                                     
