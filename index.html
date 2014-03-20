@@ -175,6 +175,8 @@ function populateHole(hole) {
 }
 
 function populateScene(model) {
+    modelView.clear();
+    console.log("populating with a new model",model);
 
     var plate = new amino.ProtoRect()
         .setW(model.plate.w).setH(model.plate.h)
@@ -327,6 +329,52 @@ amino.startApp(function(corex, stage) {
     root.add(generatePlatePanel(stage));
 });
 
+
+function modelToStatic(model) {
+    var holes = [];
+    model.holes.forEach(function(hole) {
+        var h = {};
+        for(var key in hole) {
+            if(hole.editableProps.indexOf(key) >= 0 || key == 'type') {
+                h[key] = hole[key];
+            }
+        }
+        holes.push(h);
+    });
+    return {
+        plate:{
+            type:'plate',
+            w: model.plate.w,
+            h: model.plate.h,
+        },
+        holes:holes,
+    }
+}
+
+function staticToModel(st) {
+    var model = { };
+    model.plate = new ModelObject();
+    model.plate.type = 'plate';
+    model.plate.w = st.plate.w;
+    model.plate.h = st.plate.h;
+    model.holes = [];
+    st.holes.forEach(function(hole) {
+        console.log("looking at hole",hole);
+        var h = new ModelObject();
+        for(var key in hole) {
+            h[key] = hole[key];
+        }
+        if(h.type == 'square') {
+            h.editableProps = ['w','h','x','y'];
+        }
+        if(h.type == 'round') {
+            h.editableProps = ['x','y','radius'];
+        }
+        model.holes.push(h);
+    });
+    return model;
+}
+
 function saveModel() {
     console.log('saving');
     console.log("supports history api = " + supports_history_api());
@@ -337,20 +385,26 @@ function saveModel() {
     //call the fork function
     var post = {
         id:params.id,
-        content:$('#prose').val(),
+        content:modelToStatic(model),
     };
     console.log("posting",post);
-    $.post("http://joshy.org:4201/fork",post,function(doc) {
-        console.log("got back the doc");
-        console.log(doc);
-        history.pushState(null,null,'?id='+doc.id);
-        console.log('setting');
-    },'json');
+    $.post("http://joshy.org:4201/fork?token=asdf",
+        JSON.stringify(post),
+        function(doc) {
+            console.log("got back the doc",doc);
+            history.pushState(null,null,'?id='+doc.id);
+            console.log('setting');
+        }
+    );
 }
 
     function loadDocument(id) {
         $.get("http://joshy.org:4201/get",{id:id},function(doc) {
-            console.log("got back: ",doc);
+            console.log("loaded document: ",doc);
+            var newmodel = staticToModel(doc.content);
+            console.log("new model = ",newmodel);
+            model = newmodel;
+            populateScene(newmodel);
             //$("#prose").val(doc.content);
             //evalProse();
         });
