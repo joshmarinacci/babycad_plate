@@ -173,6 +173,7 @@ function populateScene(model) {
         ;
     updateFrom(plate,'w',model.plate);
     updateFrom(plate,'h',model.plate);
+    updateFrom(plate,'d',model.plate);
     modelView.add(plate);
     model.holes.forEach(populateHole);
     core.on("press",plate,function(e){
@@ -185,7 +186,7 @@ function updateFrom(view, prop, model) {
     model.listeners.push(function(v) {
         var setter = 'set' + prop.substring(0,1).toUpperCase() + prop.substring(1);
         console.log('setter = ' + setter);
-        view[setter](v[prop]);
+        if(view[setter]) view[setter](v[prop]);
     });
 }
 
@@ -196,13 +197,13 @@ function updateTo(tf, prop, model) {
     });
 }
 
-function modelToJSCAD(model) {
+function modelToJSCAD(model,plate) {
     console.log('model',model);
     
     if(model.length) {
         var str = "";
         model.forEach(function(hole) {
-            str += '    plate = plate.subtract('+modelToJSCAD(hole)+');\n';
+            str += '    plate = plate.subtract('+modelToJSCAD(hole,plate)+');\n';
         });
         return str;
     }
@@ -211,18 +212,18 @@ function modelToJSCAD(model) {
         return ""
             +"function main() {\n"
             +'    var plate = '+modelToJSCAD(model.plate)+';\n'
-            +modelToJSCAD(model.holes)
+            +modelToJSCAD(model.holes,model.plate)
             +"    return plate;\n"
             +"}\n"
         ;
     }
     
     if(model.type == 'plate') {
-        return 'CSG.cube({ center:['+model.w/2+','+(-model.h/2)+',0],radius:['+model.w/2+','+model.h/2+',1]})'
+        return 'CSG.cube({ center:['+model.w/2+','+(-model.h/2)+',0],radius:['+model.w/2+','+model.h/2+','+model.d/2+']})'
     }
     
     if(model.type == 'square') {
-        return 'CSG.cube({ center:['+(model.x+model.w/2)+','+(-(model.y+model.h/2))+',0], radius:['+model.w/2+','+model.h/2+',1]})';
+        return 'CSG.cube({ center:['+(model.x+model.w/2)+','+(-(model.y+model.h/2))+',0], radius:['+model.w/2+','+model.h/2+','+plate.d+']})';
     }
     if(model.type == 'round') {
         return 'CSG.cylinder({'
@@ -253,6 +254,7 @@ function generateStlFromJSCad(jscadscript, linkid) {
 
 var plateWidthTextField;
 var plateHeightTextField;
+var plateDepthTextField;
 
 function generatePlatePanel(stage) {
     var platePanel = new widgets.AnchorPanel()
@@ -267,7 +269,12 @@ function generatePlatePanel(stage) {
     platePanel.add(plateHeightTextField);
     platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(40));
     
-    platePanel.setAnchorBottom(true).setBottom(50);
+    platePanel.add(new widgets.Label().setText("plate depth").setTx(0).setTy(80));
+    plateDepthTextField = new widgets.TextField().setText("").setTx(120).setTy(80).setW(60);
+    platePanel.add(plateDepthTextField);
+    platePanel.add(new widgets.Label().setText("mm").setTx(120+60+10).setTy(80));
+    
+    platePanel.setAnchorBottom(true).setBottom(90);
     return platePanel;
 }
 
@@ -337,6 +344,7 @@ function modelToStatic(model) {
             type:'plate',
             w: model.plate.w,
             h: model.plate.h,
+            d: model.plate.d,
         },
         holes:holes,
     }
@@ -348,6 +356,7 @@ function staticToModel(st) {
     model.plate.type = 'plate';
     model.plate.w = st.plate.w;
     model.plate.h = st.plate.h;
+    model.plate.d = st.plate.d;
     model.holes = [];
     st.holes.forEach(function(hole) {
         console.log("looking at hole",hole);
@@ -438,6 +447,7 @@ newmodel.plate = new ModelObject();
 newmodel.plate.type = 'plate';
 newmodel.plate.w = 100;
 newmodel.plate.h = 60;
+newmodel.plate.d = 10;
 var hole1 = new ModelObject();
 hole1.type = "square";
 hole1.w = 10;
@@ -466,6 +476,8 @@ docloader.loaded = function(doc) {
     updateTo(plateWidthTextField,'w',model.plate);
     plateHeightTextField.setText(model.plate.h+"");
     updateTo(plateHeightTextField,'h',model.plate);
+    plateDepthTextField.setText(model.plate.d+"");
+    updateTo(plateDepthTextField,'d',model.plate);
 }
 docloader.start();
 
