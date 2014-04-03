@@ -128,7 +128,7 @@ function populateHole(hole) {
             var th = Math.PI*2/10*i;
             points.push(Math.sin(th)*radius)+radius;//x
             points.push(Math.cos(th)*radius)+radius;//y
-            points.push(0);
+            //points.push(0);
         }
         return points;
     }
@@ -136,6 +136,7 @@ function populateHole(hole) {
         holeView = new amino.ProtoPoly()
             .setTx(hole.x).setTy(hole.y)
             .setFilled(1)
+            .setDimension(2)
             .setFill(UNSELECTED_HOLE_FILL);
         holeView.setRadius = function(radius) {
             this.radius = radius;
@@ -157,6 +158,7 @@ function populateHole(hole) {
         });
     }
     holeView.model = hole;
+    hole.view = holeView;
     core.on("press",holeView,viewPressed);
     core.on('drag',holeView, viewDragged);
     modelView.add(holeView);
@@ -303,7 +305,14 @@ amino.startApp(function(corex, stage) {
     panel.add(new widgets.PushButton().setText("square hole").setTx(600).setTy(20).setW(100).setH(40).onAction(createSquareHole));
     panel.add(new widgets.PushButton().setText("round hole").setTx(600).setTy(20+45).setW(100).setH(40).onAction(createRoundHole));
     panel.add(new widgets.PushButton().setText("delete hole").setTx(600).setTy(20+45+55).setW(100).setH(40)
-        .onAction(function() { propSheet.deleteSelected(); }));
+        .onAction(function() { 
+            var sel = propSheet.getSelected();
+            if(sel) {
+                modelView.remove(sel.view);
+                model.holes.splice(model.holes.indexOf(sel),1);
+            }
+            propSheet.deleteSelected(); 
+        }));
     panel.add(new widgets.PushButton().setText("zoom in").setW(100).setH(40).onAction(function() {
         modelView.setScalex(2);
         modelView.setScaley(2);
@@ -320,6 +329,29 @@ amino.startApp(function(corex, stage) {
     }));
     
     propSheet = new PropSheet();
+    var lastSelection = null;
+    propSheet.updateSelectionView = function(sheet) {
+        var view = null;
+        if(sheet.getSelected() != null) {
+            view = sheet.getSelected().view;
+        }
+        if(lastSelection && view != lastSelection) {
+            lastSelection.setFill(UNSELECTED_HOLE_FILL);
+        }
+        lastSelection = view;
+        if(view != null) {
+            view.setFill(SELECTED_HOLE_FILL);
+        }
+    }
+    
+    propSheet.setPropValue = function(node,prop,sval) {
+        node[prop] = sval;
+        node.update();
+    }
+    propSheet.getPropValue = function(node,prop) {
+        return node[prop];
+    }
+    
     propSheet.view.setAnchorRight(true);
     root.add(propSheet.view);
     propSheet.view.setTx(stage.getW()-propSheet.view.getW());
