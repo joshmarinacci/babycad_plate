@@ -7,6 +7,7 @@
     <script type='text/javascript' src='amino/widgets.js'></script>
     <script type='text/javascript' src='amino/canvasamino.js'></script>
     <script type='text/javascript' src='propsheet.js'></script>
+    <script type='text/javascript' src='docloader.js'></script>
     
     <script src="csg.js"></script>
     <script src="openjscad.js"></script>
@@ -15,46 +16,13 @@
 <style type='text/css'>
 body { margin: 0; padding: 0 }
 canvas { border: 1px solid black; width: 100%; height: 100%; }
-#downloadLink {
-    display: none;
-}
+#downloadLink { display: none; }
 </style>
 <body>
-<!--<h3>BabyCAD - Plate Builder</h3>
--->
-<!--
-
-
-// button to create rect holes
-// sliders and labels to set the size in mm
-// drag holes around
-// prop sheet on the right when you select a hole to change it's w/h or radius, x/y.
-// have sliders and are live two directions.
-// clean up the prop sheet. new class. nice layout.
-// add scaling and panning
-// add round holes
-
-// make the canvas fill the page, resize and scale it properly.
-// make round holes look roun
-
-
-* button to open 3D preview panel
-* make button to export scad file
-* make button to export stl file
-* make it persist to the server. sharable urls
-* select multiple holes
-
-
--->
-
 <canvas id='canvas' width='800' height='500'></canvas>
-
 <a id='downloadLink' href='#'>download stl</a>
 
-
 <script type='text/javascript'>
-
-
 
 var modelView;
 
@@ -407,71 +375,6 @@ function staticToModel(st) {
     return model;
 }
 
-
-
-
-function DocLoader() {
-    function supports_history_api() {
-      return !!(window.history && history.pushState);
-    }
-    function parseQuery(q) {
-        var params = {};
-        var parts = q.substring(1).split("&");
-        console.log(parts);
-        parts.forEach(function(p) {
-            var kv = p.split('=');
-            console.log(kv);
-            params[kv[0]] = kv[1];
-        });
-        return params;
-    }
-    
-    
-    var self = this;
-    function loadDocument(id) {
-        $.get("http://joshy.org:4201/get",{id:id},function(doc) {
-            console.log("loaded document: ",doc);
-            var newmodel = self.deserializeDoc(doc.content);
-            self.loaded(newmodel);
-        });
-    }
-    
-    
-    this.start = function() {
-        var startParams = parseQuery(location.search);
-        console.log("startParams",startParams);
-        
-        if(startParams && startParams.id) {
-            loadDocument(startParams.id);
-        } else {
-            this.loaded(this.defaultDoc);
-        }
-    }
-    
-    this.save = function(themodel) {
-        console.log('saving');
-        console.log("supports history api = " + supports_history_api());
-        console.log("location = " + location.search);
-        var params = parseQuery(location.search);
-        console.log(params);
-        
-        //call the fork function
-        var post = {
-            id:params.id,
-            content:this.serializeDoc(themodel),
-        };
-        console.log("posting",post);
-        $.post("http://joshy.org:4201/fork?token=asdf",
-            JSON.stringify(post),
-            function(doc) {
-                console.log("got back the doc",doc);
-                history.pushState(null,null,'?id='+doc.id);
-                console.log('setting');
-            }
-        );
-    }
-    
-}
 
 
 var newmodel = {};
