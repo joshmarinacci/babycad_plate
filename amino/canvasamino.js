@@ -72,6 +72,7 @@ amino.native = {
             g:0.5,
             b:0.5,
             geometry:[0,0,0,  100,0,0,  100,100,0],
+            dimension: -1,
             draw: function(g) {
                 if(this.visible != 1) return;
                 g.save();
@@ -83,7 +84,7 @@ amino.native = {
                 g.fillStyle = 'rgb('+this.r*255+','+this.g*255+','+this.b*255+')';
                 g.beginPath();
                 var gm = this.geometry;
-                for(var i=0; i<this.geometry.length; i+=3) {
+                for(var i=0; i<this.geometry.length; i+=this.dimension) {
                     if(i == 0) {
                         g.moveTo(gm[i],gm[i+1]);
                     } else {
@@ -148,6 +149,24 @@ amino.native = {
         };
         return text;
     },
+    createCanvasDirectNode: function() {
+        var node = {
+            'kind':'CanvasDirectNode',
+            tx:0,
+            ty:0,
+            w:100,
+            h:100,
+            drawFunc: null,
+            draw: function(g) {
+                if(this.drawFunc) {
+                    this.drawFunc(g);
+                }
+                //console.log("drawing the canvas node");
+            }
+        }
+        this.list.push(node);
+        return node;
+    },
     addNodeToGroup: function(h1,h2) {
         h2.children.push(h1);
     },
@@ -190,7 +209,6 @@ amino.native = {
         var w = this.domcanvas.width;
         var h = this.domcanvas.height;
         var g = this.domctx;
-        
         g.fillStyle = "white";
         g.fillRect(0,0,w,h);
         this.root.draw(g);
@@ -204,10 +222,6 @@ amino.native = {
     },
     setImmediate: function(loop) {
         requestAnimationFrame(loop);
-        /*
-        setTimeout(function(){
-        requestAnimationFrame(loop);
-        },300);*/
     },
     setWindowSize: function(w,h) {
         //NO OP
@@ -369,12 +383,38 @@ function attachEvent(node,name,func) {
     }
 };
 
+function getOffset( elem )
+{
+    var offset = {x:0,y:0};
+    do {
+      if ( !isNaN( elem.offsetLeft ) )
+      {
+          offset.x += elem.offsetLeft;
+          offset.y += elem.offsetTop;
+      }
+    } while( elem = elem.offsetParent );
+    return offset;
+}
+
 function toXY(e) {
+    var offset = getOffset(e.target);
     return {
-        x:e.pageX-e.target.offsetLeft,
-        y:e.pageY-e.target.offsetTop,
+        x: e.pageX-offset.x,
+        y: e.pageY-offset.y,
     }
 }
+
+amino.forceRedraw = function() {
+    var dom = amino.native.domcanvas;
+    dom.width = dom.clientWidth;
+    dom.height = dom.clientHeight;
+        input.processEvent(Core._core,{
+            type:"windowsize",
+            width:dom.width,
+            height:dom.height,
+        });
+}
+
 amino.setupEventHandlers = function() {
     var self = this;
     var dom = amino.native.domcanvas;
@@ -386,9 +426,8 @@ amino.setupEventHandlers = function() {
             width:dom.width,
             height:dom.height,
         });
-    });
+    });    
     attachEvent(dom,'mousedown',function(e){
-        mouseState.pressed = true;
         e.preventDefault();
         var pt = toXY(e);
         input.processEvent(Core._core,{
@@ -479,7 +518,6 @@ amino.setupEventHandlers = function() {
     attachEvent(window,'keydown',function(e){
         if(e.metaKey) return;
         e.preventDefault();
-        console.log(e);
         var key = e.keyCode;
         if(keyRemap[key]) {
             key = keyRemap[key];

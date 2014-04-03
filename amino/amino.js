@@ -1009,7 +1009,13 @@ function SGStage(core) {
         }
         return null;
     }
-    
+
+    var self = this;
+    this.core.on('windowsize',this,function(e) {
+        var root = self.getRoot();
+        if(root.setW) root.setW(self.getW());
+        if(root.setH) root.setH(self.getH());
+    });
 }
 
 /**
@@ -1273,9 +1279,9 @@ function Core() {
     }
     
     this.globalToLocal_helper = function(pt, node) {
-        	if(node.parent) {
-        	    pt =  this.globalToLocal_helper(pt,node.parent);
-        	}
+    	if(node.parent) {
+    		pt =  this.globalToLocal_helper(pt,node.parent);
+    	}
         return {
             x: (pt.x - node.getTx())/node.getScalex(),
             y: (pt.y - node.getTy())/node.getScaley(),
